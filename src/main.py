@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, status, UploadFile, File
 from pydantic import BaseModel
 from rdkit import Chem
 import csv
+from os import getenv
 
 
 tags_metadata = [
@@ -57,6 +58,12 @@ molecules = [
 def root():
     """Root endpoint for the application"""
     return {"message": "Molecule Fast API application"}
+
+
+@app.get("/server", tags=["Root"])
+def get_server():
+    """Check which server is responding"""
+    return {"server_id": getenv("SERVER_ID", "1")}
 
 
 @app.post("/add", status_code=status.HTTP_201_CREATED, response_model=Molecule, tags=["Molecule Management"])

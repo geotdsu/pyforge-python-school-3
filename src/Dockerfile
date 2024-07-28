@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-RUN conda install --yes -c conda-forge rdkit --update-deps && \
+RUN conda install conda-forge::rdkit && \
     conda clean -afy
 
 RUN pip install --no-cache-dir -r requirements.txt

@@ -37,8 +37,10 @@ upstream webapp {
     server web1:8000;
     server web2:8000;
 }
+
 server {
     listen 80;
+
     location / {
         proxy_pass http://webapp;
     }
@@ -62,7 +64,7 @@ services:
       - ./src:/src
     environment:
       SERVER_ID: SERVER-2
-
+      
   nginx:
     image: nginx:latest
     ports:

@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  web1:
+    build: ./src
+    volumes:
+      - ./src:/src
+    environment:
+      SERVER_ID: SERVER-1
+
+  web2:
+    build: ./src
+    volumes:
+      - ./src:/src
+    environment:
+      SERVER_ID: SERVER-2
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+    depends_on:
+      - web1
+      - web2

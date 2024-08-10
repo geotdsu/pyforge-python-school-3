@@ -3,4 +3,5 @@ uvicorn
 rdkit
 pytest
 httpx
+python-multipart
 flake8

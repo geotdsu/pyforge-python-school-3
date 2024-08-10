@@ -1,11 +1,17 @@
 import pytest
 from fastapi.testclient import TestClient
 from src.main import app, molecules
-from tests.test_main_valid_cases import reset_molecules
 import os
 
 
 client = TestClient(app)
+
+
+@pytest.fixture
+def reset_molecules():
+    # Reset the in-memory storage before each test
+    molecules.clear()
+    yield
 
 
 # Testing add_molecule Function

@@ -1,4 +1,3 @@
-pIC50,mol,num_atoms,logP
-CCO,0.01,<rdkit.Chem.rdchem.Mol object at 0x7f59a314c120>,15,2.292
-O=C(O)c1cn(-c2ccc(Cl)cc2Cl)c2cc(N3CCNCC3)c(F)cc2c1=O,0.0,<rdkit.Chem.rdchem.Mol object at 0x7f59a314c190>,29,3.544400000000002
-O=C(O)c1cn(-c2ccc(F)cc2F)c2cc(N3CCNCC3)c(F)cc2c1=O,0.0,<rdkit.Chem.rdchem.Mol object at 0x7f59a314c200>,29,2.5158000000000005
+id,name
+1,Molecule1
+2,Molecule2

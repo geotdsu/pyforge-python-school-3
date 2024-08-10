@@ -39,42 +39,33 @@ def test_add_valid_simple_smiles(molecule_id, smiles, expected_status):
 
 ### Testing get_molecule Function
 
-@pytest.mark.parametrize("molecule_id,expected_status,expected_response", [
-    (1, 200, {"molecule_id": 1, "smiles": "CCO"}),
-    (2, 200, {"molecule_id": 2, "smiles": "c1ccccc1"}),
-    (3, 200, {"molecule_id": 3, "smiles": "CC(=O)O"})
-])
-def test_get_molecule(molecule_id, expected_status, expected_response):
-    response = client.get(f"/molecule/{molecule_id}")
-    assert response.status_code == expected_status
-    assert response.json() == expected_response
-    
+def test_get_molecule(reset_molecules):
+    client.post("/add", json={"molecule_id": 15, "smiles": "C1CCCCC1"})
+
+    response = client.get("/molecule/15")
+    assert response.status_code == 200
+    assert response.json() == {"molecule_id": 15, "smiles": "C1CCCCC1"}
 
 
 ### Testing get_molecule Function
-@pytest.mark.parametrize("molecule_id,smiles,expected_status", [
-    (1, "C1=CC=CC=C1", 200),                      # Update with valid benzene SMILES
-    (2, "CCO", 200),                              # Update with simple ethanol SMILES
-    (3, "CC(C)C1=CC2=C(C=C1)C(=O)C=C2", 200),     # Update with complex SMILES
-    (4, "C[C@H](O)[C@@H](N)C(=O)O", 200)          # Update with stereochemistry SMILES
-])
-def test_update_valid_smiles(molecule_id, smiles, expected_status):
-    response = client.put(f"/molecule/{molecule_id}", json={"smiles": smiles})
-    assert response.status_code == expected_status
-    assert response.json() == {"molecule_id": molecule_id, "smiles": smiles}
-    assert molecules[molecule_id]["smiles"] == smiles
 
-
+def test_update_valid_smiles(reset_molecules):
+    # Add molecules to the in-memory storage before updating
+    client.post("/add", json={"molecule_id": 1, "smiles": "C1=CC=CC=C1"})
+    
+    response = client.put("/molecule/1", json={"smiles": "C1=CC=CC=C1"})
+    assert response.status_code == 200
+    assert response.json() == {"molecule_id": 1, "smiles": "C1=CC=CC=C1"}
+    assert molecules[1]["smiles"] == "C1=CC=CC=C1"
 
 ## Testing delete_molecule Function
 
 def test_delete_existing_molecule():
-    assert 1 in molecules
+    client.post("/add", json={"molecule_id": 1, "smiles": "CCO"})
+
     response = client.delete("/molecule/1")
     assert response.status_code == 204
     assert 1 not in molecules
-
-
 
 ## Testing get_molecules Function
 

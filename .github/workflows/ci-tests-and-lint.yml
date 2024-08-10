@@ -21,3 +21,7 @@ jobs:
       - run: |
           cd tests
           python -m pytest
+      - name: Lint with Flake8
+        run: |
+          python -m pip install flake8
+          flake8 . --max-line-length=88

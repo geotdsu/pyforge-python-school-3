@@ -155,11 +155,11 @@ def test_substructure_search_invalid_substructure():
 ## Testing upload_file Function
 
 @pytest.mark.parametrize("file_path, expected_status, expected_detail", [
-    ("csv_files/real_csv.txt", 400, "Invalid file format. Only CSV files are supported"), #
-    ("csv_files/empty.csv", 400, "Uploaded file is empty"),
-    ("csv_files/missing_smiles_column.csv", 400, "CSV file must contain 'SMILES', 'smiles', or 'Smiles' header."),
-    ("csv_files/missing_smiles_row.csv", 400, "Missing 'SMILES' or 'smiles' or 'Smiles' value in row 3"),
-    ("csv_files/incorrect_smiles_value.csv", 400, 'Invalid SMILES string in row 3: Saba')
+    ("real_csv.txt", 400, "Invalid file format. Only CSV files are supported"), #
+    ("empty.csv", 400, "Uploaded file is empty"),
+    ("missing_smiles_column.csv", 400, "CSV file must contain 'SMILES', 'smiles', or 'Smiles' header."),
+    ("missing_smiles_row.csv", 400, "Missing 'SMILES' or 'smiles' or 'Smiles' value in row 3"),
+    ("incorrect_smiles_value.csv", 400, 'Invalid SMILES string in row 3: Saba')
 ])
 def test_upload_file(file_path, expected_status, expected_detail):
     # This function will test if a CSV file has incorrect SMILES in a row
@@ -182,8 +182,8 @@ def test_upload_file_no_file_provided():
 def test_upload_file_large_file_size():
     # This function will test if the CSV is too large or not and the limit is 100 MB
     # This test will fail because I don't have a CSV file that is over 100MB :) 
-    # if you do, put it in tests/csv_files
-    file_path = 'csv_files/your_big_file.csv'
+    # if you do, put it in tests
+    file_path = 'your_big_file.csv'
 
 
     with open(file_path, 'rb') as file:

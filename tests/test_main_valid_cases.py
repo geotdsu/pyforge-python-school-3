@@ -133,7 +133,7 @@ def test_substructure_search_no_matches(reset_molecules):
 
 def test_upload_file():
     # This csv file 
-    file_path = 'csv_files/valid_smiles_dataset.csv'
+    file_path = 'valid_smiles_dataset.csv'
 
 
     with open(file_path, 'rb') as file:

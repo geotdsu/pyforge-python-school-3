@@ -214,7 +214,7 @@ async def upload_file(file: UploadFile = File(...)):
     """
     
     # Maximum allowed file size (100 MB)
-    MAX_FILE_SIZE = 5 * 1024 * 1024
+    MAX_FILE_SIZE = 100 * 1024 * 1024
     
     
     # Validate the file format

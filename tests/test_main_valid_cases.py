@@ -13,7 +13,6 @@ def reset_molecules():
     yield
 
 
-
 # Testing the root of the application
 def test_root():
     response = client.get("/")
@@ -21,23 +20,22 @@ def test_root():
     assert response.json() == {'message': 'Molecule Fast API application'}
 
 
-
-### Testing add_molecule Function
+# Testing add_molecule Function
 
 @pytest.mark.parametrize("molecule_id,smiles,expected_status", [
     (5, "CCO", 201),                          # Simple SMILES
     (6, "C1CCCCC1", 201),                     # Complex SMILES (Cyclohexane)
-    (7, "CC(C)C1=CC2=C(C=C1)C(=O)C=C2", 201), # SMILES with rings and branches
+    (7, "CC(C)C1=CC2=C(C=C1)C(=O)C=C2", 201),  # SMILES with rings and branches
     (8, "C[C@H](O)[C@@H](N)C(=O)O", 201)      # SMILES with stereo chemistry
 ])
 def test_add_valid_simple_smiles(molecule_id, smiles, expected_status):
-    response = client.post("/add", json={"molecule_id": molecule_id, "smiles": smiles})
+    response = client.post(
+        "/add", json={"molecule_id": molecule_id, "smiles": smiles})
     assert response.status_code == expected_status
     assert response.json() == {"molecule_id": molecule_id, "smiles": smiles}
 
 
-
-### Testing get_molecule Function
+# Testing get_molecule Function
 
 def test_get_molecule(reset_molecules):
     client.post("/add", json={"molecule_id": 15, "smiles": "C1CCCCC1"})
@@ -47,18 +45,19 @@ def test_get_molecule(reset_molecules):
     assert response.json() == {"molecule_id": 15, "smiles": "C1CCCCC1"}
 
 
-### Testing get_molecule Function
+# Testing get_molecule Function
 
 def test_update_valid_smiles(reset_molecules):
     # Add molecules to the in-memory storage before updating
     client.post("/add", json={"molecule_id": 1, "smiles": "C1=CC=CC=C1"})
-    
+
     response = client.put("/molecule/1", json={"smiles": "C1=CC=CC=C1"})
     assert response.status_code == 200
     assert response.json() == {"molecule_id": 1, "smiles": "C1=CC=CC=C1"}
     assert molecules[1]["smiles"] == "C1=CC=CC=C1"
 
-## Testing delete_molecule Function
+# Testing delete_molecule Function
+
 
 def test_delete_existing_molecule():
     client.post("/add", json={"molecule_id": 1, "smiles": "CCO"})
@@ -67,14 +66,16 @@ def test_delete_existing_molecule():
     assert response.status_code == 204
     assert 1 not in molecules
 
-## Testing get_molecules Function
+# Testing get_molecules Function
+
 
 def test_get_molecules(reset_molecules):
     # notice that with reset_molecules now our In-memory storage is empty
 
     # adding few molecules before printing them out
     client.post("/add", json={"molecule_id": 1, "smiles": "CCO"})
-    client.post("/add", json={"molecule_id": 2, "smiles": "C[C@H](O)[C@@H](N)C(=O)O"})
+    client.post("/add", json={"molecule_id": 2,
+                "smiles": "C[C@H](O)[C@@H](N)C(=O)O"})
 
     response = client.get("/molecules")
     assert response.status_code == 200
@@ -84,15 +85,15 @@ def test_get_molecules(reset_molecules):
     ]
 
 
-
-## Testing Substructue Search Function
+# Testing Substructue Search Function
 
 def test_substructure_search(reset_molecules):
     # adding few molecules to the database
     client.post("/add", json={"molecule_id": 1, "smiles": "c1ccccc1"})
-    client.post("/add", json={"molecule_id": 2, "smiles": "O=[N+]([O-])c1nccn1COCC=CCO"})
-    client.post("/add", json={"molecule_id": 3, "smiles": "OCCN1CCN(CCCOn2nnc3ccccc32)CC1"})
-
+    client.post("/add", json={"molecule_id": 2,
+                "smiles": "O=[N+]([O-])c1nccn1COCC=CCO"})
+    client.post("/add", json={"molecule_id": 3,
+                "smiles": "OCCN1CCN(CCCOn2nnc3ccccc32)CC1"})
 
     response = client.post("/search", json={"substructure": "CCO"})
     assert response.status_code == 200
@@ -103,15 +104,19 @@ def test_substructure_search(reset_molecules):
             {"molecule_id": 3, "smiles": "OCCN1CCN(CCCOn2nnc3ccccc32)CC1"}
         ]
     }
-    
+
 
 def test_substructure_search_no_matches(reset_molecules):
     # adding few molecules to the database
-    client.post("/add", json={"molecule_id": 1, "smiles": "S=C=NCCCCCCCCc1ccccc1"})
-    client.post("/add", json={"molecule_id": 2, "smiles": "S=c1[nH]nc(Cn2ccc3ccccc32)n1-c1ccccc1"})
-    client.post("/add", json={"molecule_id": 3, "smiles": "OCCN1CCN(CCCOn2nnc3ccccc32)CC1"})
+    client.post("/add", json={"molecule_id": 1,
+                "smiles": "S=C=NCCCCCCCCc1ccccc1"})
+    client.post("/add", json={"molecule_id": 2,
+                "smiles": "S=c1[nH]nc(Cn2ccc3ccccc32)n1-c1ccccc1"})
+    client.post("/add", json={"molecule_id": 3,
+                "smiles": "OCCN1CCN(CCCOn2nnc3ccccc32)CC1"})
 
-    response = client.post("/search", json={"substructure": "O=c1cc(CCl)occ1O"})
+    response = client.post(
+        "/search", json={"substructure": "O=c1cc(CCl)occ1O"})
     response.status_code == 200
     assert response.json() == {
         "message": "No matching molecules found",
@@ -119,13 +124,11 @@ def test_substructure_search_no_matches(reset_molecules):
     }
 
 
-
-## Testing upload_file Function
+# Testing upload_file Function
 
 def test_upload_file():
-    # This csv file 
+    # This csv file
     file_path = 'valid_smiles_dataset.csv'
-
 
     with open(file_path, 'rb') as file:
         response = client.post("/uploadfile", files={"file": file})
@@ -134,17 +137,15 @@ def test_upload_file():
     assert response.json() == {"message": "Successfully uploaded 3 molecules"}
 
 
-
 # Testing get_server Function
 
 def test_get_server():
-    os.environ["SERVER_ID"] = "SERVER-123"  
+    os.environ["SERVER_ID"] = "SERVER-123"
     response = client.get("/server")
     assert response.status_code == 200
-    assert response.json() == {"server_id": "SERVER-123"} 
+    assert response.json() == {"server_id": "SERVER-123"}
 
-    del os.environ["SERVER_ID"]  
+    del os.environ["SERVER_ID"]
     response = client.get("/server")
     assert response.status_code == 200
     assert response.json() == {"server_id": "1"}
-

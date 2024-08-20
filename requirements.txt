@@ -10,4 +10,4 @@ python-multipart
 flake8
 asyncpg
 psycopg2-binary
-python-dotenv
+python-dotenvy

@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-rdkit
-pytest
-httpx
-flake8
-python-multipart

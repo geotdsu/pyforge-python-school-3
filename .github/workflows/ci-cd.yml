@@ -53,9 +53,3 @@ jobs:
         run: |
           python -m pip install flake8
           flake8 . --max-line-length=150
-
-
-
-      # - run: |
-      #     cd tests
-      #     python -m pytest

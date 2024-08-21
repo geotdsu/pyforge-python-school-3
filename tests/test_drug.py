@@ -7,7 +7,7 @@ from src.database import get_db, Base
 from src import models
 
 # Set up a test database
-DATABASE_URL = "sqlite:///./test.db"
+DATABASE_URL = "sqlite:///tests/test.db"
 
 engine = create_engine(DATABASE_URL)
 TestingSessionLocal = sessionmaker(
@@ -15,9 +15,8 @@ TestingSessionLocal = sessionmaker(
     autoflush=False,
     bind=engine)
 
+
 # Override the get_db function to use the test database
-
-
 def override_get_db():
     try:
         db = TestingSessionLocal()
@@ -30,24 +29,14 @@ app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
 
-# Fixture to create the database tables
-
 
 @pytest.fixture(scope="module")
-def create_tables():
+def setup_db():
+    # Create tables
     Base.metadata.create_all(bind=engine)
     yield
-    # Do nothing here; drop happens in another fixture
-
-# Fixture to drop the database tables
-
-
-@pytest.fixture(scope="module")
-def drop_tables():
-    yield
+    # Drop tables after tests are done
     Base.metadata.drop_all(bind=engine)
-
-# Fixture to clear the database before each test
 
 
 @pytest.fixture(autouse=True)
@@ -61,15 +50,14 @@ def clear_database():
 
 
 # Test the GET /drugs endpoint
-def test_get_drugs(create_tables, drop_tables):
+def test_get_drugs(setup_db, clear_database):
     response = client.get("/drugs")
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.json() == []
+
 
 # Test the POST /drugs endpoint
-
-
-def test_create_drug(create_tables, drop_tables):
+def test_create_drug(setup_db, clear_database):
     drug_data = {
         "name": "TestDrug",
         "smiles": "CCO"
@@ -78,10 +66,9 @@ def test_create_drug(create_tables, drop_tables):
     assert response.status_code == 201
     assert response.json()["name"] == "TestDrug"
 
+
 # Test the GET /drugs/{id} endpoint
-
-
-def test_get_drug(create_tables, drop_tables):
+def test_get_drug(setup_db, clear_database):
     response = client.post("/drugs", json={"name": "TestDrug2", "smiles": "C"})
     drug_id = response.json()["id"]
 
@@ -89,10 +76,9 @@ def test_get_drug(create_tables, drop_tables):
     assert response.status_code == 200
     assert response.json()["name"] == "TestDrug2"
 
+
 # Test the DELETE /drugs/{id} endpoint
-
-
-def test_delete_drug(create_tables, drop_tables):
+def test_delete_drug(setup_db, clear_database):
     response = client.post(
         "/drugs",
         json={
@@ -106,10 +92,9 @@ def test_delete_drug(create_tables, drop_tables):
     response = client.get(f"/drugs/{drug_id}")
     assert response.status_code == 404
 
+
 # Test the PUT /drugs/{id} endpoint
-
-
-def test_update_drug(create_tables, drop_tables):
+def test_update_drug(setup_db, clear_database):
     response = client.post(
         "/drugs",
         json={
@@ -125,10 +110,9 @@ def test_update_drug(create_tables, drop_tables):
     assert response.status_code == 200
     assert response.json()["name"] == "UpdatedDrug"
 
+
 # Test the GET /substructure_search endpoint
-
-
-def test_search_drugs_by_substructure(create_tables, drop_tables):
+def test_search_drugs_by_substructure(setup_db, clear_database):
     # Add some test data
     client.post("/drugs", json={"name": "Drug1", "smiles": "CCO"})
     client.post("/drugs", json={"name": "Drug2", "smiles": "CCC"})
@@ -136,13 +120,20 @@ def test_search_drugs_by_substructure(create_tables, drop_tables):
     response = client.get("/substructure_search?substructure=CCO")
     assert response.status_code == 200
     results = response.json()
-    print("Results:", results)  # Debugging output
     assert len(results) == 1
     assert results[0]["name"] == "Drug1"
 
 
+#Test creating a drug with empty smiles (empty 'smiles')
+def test_create_drug_empty_smiles(setup_db, clear_database):
+    drug_data = {"name": "DrugWithEmptySMILES", "smiles": ""}
+    response = client.post("/drugs", json=drug_data)
+    assert response.status_code == 422
+    assert "detail" in response.json()
+
+
 # Test creating a drug with invalid data (missing 'name')
-def test_create_drug_invalid_data_missing_name(create_tables, drop_tables):
+def test_create_drug_invalid_data_missing_name(setup_db, clear_database):
     drug_data = {
         "smiles": "CCO"
     }
@@ -150,10 +141,19 @@ def test_create_drug_invalid_data_missing_name(create_tables, drop_tables):
     assert response.status_code == 422
     assert "detail" in response.json()
 
+
+# Test pagination with a limit on the number of retrieved drugs
+def test_get_drugs_pagination(setup_db, clear_database):
+    for i in range(15):
+        client.post("/drugs", json={"name": f"Drug{i}", "smiles": "CCO"})
+    
+    response = client.get("/drugs?limit=10")
+    assert response.status_code == 200
+    assert len(response.json()) == 10
+
+
 # Test creating a drug with invalid data (invalid SMILES)
-
-
-def test_create_drug_invalid_data_invalid_smiles(create_tables, drop_tables):
+def test_create_drug_invalid_data_invalid_smiles(setup_db, clear_database):
     drug_data = {
         "name": "TestDrugInvalidSMILES",
         "smiles": "invalid_smiles"
@@ -162,26 +162,23 @@ def test_create_drug_invalid_data_invalid_smiles(create_tables, drop_tables):
     assert response.status_code == 422
     assert "detail" in response.json()
 
+
 # Test retrieving a drug with a non-existent ID
-
-
-def test_get_drug_non_existent(create_tables, drop_tables):
+def test_get_drug_non_existent(setup_db, clear_database):
     response = client.get("/drugs/99999")
     assert response.status_code == 404
     assert "detail" in response.json()
 
+
 # Test deleting a drug with a non-existent ID
-
-
-def test_delete_drug_non_existent(create_tables, drop_tables):
+def test_delete_drug_non_existent(setup_db, clear_database):
     response = client.delete("/drugs/99999")
     assert response.status_code == 404
     assert "detail" in response.json()
 
+
 # Test updating a drug with a non-existent ID
-
-
-def test_update_drug_non_existent(create_tables, drop_tables):
+def test_update_drug_non_existent(setup_db, clear_database):
     updated_drug_data = {
         "name": "NonExistentDrug",
         "smiles": "COO"
@@ -190,10 +187,9 @@ def test_update_drug_non_existent(create_tables, drop_tables):
     assert response.status_code == 404
     assert "detail" in response.json()
 
+
 # Test updating a drug with invalid data (missing 'smiles')
-
-
-def test_update_drug_invalid_data_missing_smiles(create_tables, drop_tables):
+def test_update_drug_invalid_data_missing_smiles(setup_db, clear_database):
     response = client.post(
         "/drugs",
         json={
@@ -208,10 +204,9 @@ def test_update_drug_invalid_data_missing_smiles(create_tables, drop_tables):
     assert response.status_code == 422
     assert "detail" in response.json()
 
+
 # Test substructure search with no matching drugs
-
-
-def test_search_drugs_by_substructure_no_match(create_tables, drop_tables):
+def test_search_drugs_by_substructure_no_match(setup_db, clear_database):
     # Add some test data
     client.post("/drugs", json={"name": "Drug3", "smiles": "CCO"})
     client.post("/drugs", json={"name": "Drug4", "smiles": "CCC"})

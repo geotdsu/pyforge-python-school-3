@@ -124,7 +124,7 @@ def test_search_drugs_by_substructure(setup_db, clear_database):
     assert results[0]["name"] == "Drug1"
 
 
-#Test creating a drug with empty smiles (empty 'smiles')
+# Test creating a drug with empty smiles (empty 'smiles')
 def test_create_drug_empty_smiles(setup_db, clear_database):
     drug_data = {"name": "DrugWithEmptySMILES", "smiles": ""}
     response = client.post("/drugs", json=drug_data)
@@ -146,7 +146,7 @@ def test_create_drug_invalid_data_missing_name(setup_db, clear_database):
 def test_get_drugs_pagination(setup_db, clear_database):
     for i in range(15):
         client.post("/drugs", json={"name": f"Drug{i}", "smiles": "CCO"})
-    
+
     response = client.get("/drugs?limit=10")
     assert response.status_code == 200
     assert len(response.json()) == 10

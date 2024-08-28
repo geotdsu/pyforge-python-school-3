@@ -3,8 +3,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.main import app
-from src.database import get_db, Base
+from src.database import get_db
+from src.models import Base
 from src import models
+from src.logger import logger
 
 # Set up a test database
 DATABASE_URL = "sqlite:///tests/test.db"
@@ -52,6 +54,7 @@ def clear_database():
 # Test the GET /drugs endpoint
 def test_get_drugs(setup_db, clear_database):
     response = client.get("/drugs")
+    logger.info(f"GET /drugs response: {response.json()}")
     assert response.status_code == 200
     assert response.json() == []
 
@@ -63,6 +66,7 @@ def test_create_drug(setup_db, clear_database):
         "smiles": "CCO"
     }
     response = client.post("/drugs", json=drug_data)
+    logger.info(f"POST /drugs response: {response.json()}")
     assert response.status_code == 201
     assert response.json()["name"] == "TestDrug"
 
@@ -73,6 +77,7 @@ def test_get_drug(setup_db, clear_database):
     drug_id = response.json()["id"]
 
     response = client.get(f"/drugs/{drug_id}")
+    logger.info(f"GET /drugs/{drug_id} response: {response.json()}")
     assert response.status_code == 200
     assert response.json()["name"] == "TestDrug2"
 
@@ -87,9 +92,12 @@ def test_delete_drug(setup_db, clear_database):
     drug_id = response.json()["id"]
 
     response = client.delete(f"/drugs/{drug_id}")
+    logger.info(f"DELETE /drugs/{drug_id} response: {response.status_code}")
     assert response.status_code == 204
 
     response = client.get(f"/drugs/{drug_id}")
+    logger.info(
+        f"GET /drugs/{drug_id} response after deletion: {response.status_code}")
     assert response.status_code == 404
 
 
@@ -107,6 +115,7 @@ def test_update_drug(setup_db, clear_database):
         "smiles": "COO"
     }
     response = client.put(f"/drugs/{drug_id}", json=updated_drug_data)
+    logger.info(f"PUT /drugs/{drug_id} response: {response.json()}")
     assert response.status_code == 200
     assert response.json()["name"] == "UpdatedDrug"
 
@@ -118,6 +127,7 @@ def test_search_drugs_by_substructure(setup_db, clear_database):
     client.post("/drugs", json={"name": "Drug2", "smiles": "CCC"})
 
     response = client.get("/substructure_search?substructure=CCO")
+    logger.info(f"GET /substructure_search response: {response.json()}")
     assert response.status_code == 200
     results = response.json()
     assert len(results) == 1
@@ -128,6 +138,7 @@ def test_search_drugs_by_substructure(setup_db, clear_database):
 def test_create_drug_empty_smiles(setup_db, clear_database):
     drug_data = {"name": "DrugWithEmptySMILES", "smiles": ""}
     response = client.post("/drugs", json=drug_data)
+    logger.info(f"POST /drugs with empty SMILES response: {response.json()}")
     assert response.status_code == 422
     assert "detail" in response.json()
 
@@ -138,6 +149,7 @@ def test_create_drug_invalid_data_missing_name(setup_db, clear_database):
         "smiles": "CCO"
     }
     response = client.post("/drugs", json=drug_data)
+    logger.info(f"POST /drugs with missing name response: {response.json()}")
     assert response.status_code == 422
     assert "detail" in response.json()
 
@@ -148,6 +160,7 @@ def test_get_drugs_pagination(setup_db, clear_database):
         client.post("/drugs", json={"name": f"Drug{i}", "smiles": "CCO"})
 
     response = client.get("/drugs?limit=10")
+    logger.info(f"GET /drugs with limit=10 response: {response.json()}")
     assert response.status_code == 200
     assert len(response.json()) == 10
 
@@ -159,6 +172,7 @@ def test_create_drug_invalid_data_invalid_smiles(setup_db, clear_database):
         "smiles": "invalid_smiles"
     }
     response = client.post("/drugs", json=drug_data)
+    logger.info(f"POST /drugs with invalid SMILES response: {response.json()}")
     assert response.status_code == 422
     assert "detail" in response.json()
 
@@ -166,6 +180,7 @@ def test_create_drug_invalid_data_invalid_smiles(setup_db, clear_database):
 # Test retrieving a drug with a non-existent ID
 def test_get_drug_non_existent(setup_db, clear_database):
     response = client.get("/drugs/99999")
+    logger.info(f"GET /drugs/99999 response: {response.json()}")
     assert response.status_code == 404
     assert "detail" in response.json()
 
@@ -173,6 +188,7 @@ def test_get_drug_non_existent(setup_db, clear_database):
 # Test deleting a drug with a non-existent ID
 def test_delete_drug_non_existent(setup_db, clear_database):
     response = client.delete("/drugs/99999")
+    logger.info(f"DELETE /drugs/99999 response: {response.json()}")
     assert response.status_code == 404
     assert "detail" in response.json()
 
@@ -184,6 +200,7 @@ def test_update_drug_non_existent(setup_db, clear_database):
         "smiles": "COO"
     }
     response = client.put("/drugs/99999", json=updated_drug_data)
+    logger.info(f"PUT /drugs/99999 response: {response.json()}")
     assert response.status_code == 404
     assert "detail" in response.json()
 
@@ -201,6 +218,8 @@ def test_update_drug_invalid_data_missing_smiles(setup_db, clear_database):
         "name": "UpdatedDrugMissingSmiles"
     }
     response = client.put(f"/drugs/{drug_id}", json=updated_drug_data)
+    logger.info(
+        f"PUT /drugs/{drug_id} with missing smiles response: {response.json()}")
     assert response.status_code == 422
     assert "detail" in response.json()
 
@@ -212,6 +231,8 @@ def test_search_drugs_by_substructure_no_match(setup_db, clear_database):
     client.post("/drugs", json={"name": "Drug4", "smiles": "CCC"})
 
     response = client.get("/substructure_search?substructure=N")
+    logger.info(
+        f"GET /substructure_search with no match response: {response.json()}")
     assert response.status_code == 200
     results = response.json()
     assert len(results) == 0

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routers import drug
+from src.routers import drug
 from .models import Base
 from .database import engine
 from .logger import logger

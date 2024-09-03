@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from rdkit import Chem
 from ..logger import logger
-
+from src.redis_cache import set_cache, get_cached_result
 
 router = APIRouter(tags=['Drugs'])
 
@@ -62,8 +62,17 @@ def get_drugs(
     logger.info(
         "Fetching drugs with limit: %s, skip: %s, search query: %s", limit, skip, search)
 
+    cache_key = f"drugs:limit={limit}:skip={skip}:search={search}"
+    cached_result = get_cached_result(cache_key)
+
+    if cached_result:
+        logger.info("Returning cached result for drugs")
+        return {"source": "cache", "data": cached_result}
+    
     drugs_iter = drugs_iterator(db, limit, skip)
     drugs = list(drugs_iter)
+
+    set_cache(cache_key, drugs)
 
     return drugs
 
@@ -77,6 +86,9 @@ def create_drugs(drug: schemas.DrugAdd, db: Session = Depends(get_db)):
     db.add(new_drug)
     db.commit()
     db.refresh(new_drug)
+
+    # Example: Clear all cached results related to drugs
+    redis_client.flushdb()
 
     return new_drug
 
@@ -108,6 +120,9 @@ def delete_drug(id: int, db: Session = Depends(get_db)):
     drug.delete(synchronize_session=False)
     db.commit()
 
+    # Clear cache if necessary
+    redis_client.flushdb()
+
 
 @router.put("/drugs/{id}", response_model=schemas.DrugResponse)
 def update_drug(
@@ -127,6 +142,10 @@ def update_drug(
 
     drug_query.update(updated_drug.model_dump(), synchronize_session=False)
     db.commit()
+
+    # Clear cache if necessary
+    redis_client.flushdb()
+
     return drug_query.first()
 
 
@@ -137,6 +156,13 @@ def get_substructure_match(substructure: str = Query(..., description="SMILES st
     logger.info(
         f'Substructure search for substructure="{substructure}" with limit={limit}')
 
+    cache_key = f"substructure_search:{substructure}:limit={limit}"
+    cached_result = get_cached_result(cache_key)
+
+    if cached_result:
+        logger.info("Returning cached result for substructure search")
+        return {"source": "cache", "data": cached_result}
+    
     substructure = substructure.strip()
 
     query_mol = Chem.MolFromSmiles(substructure)
@@ -153,5 +179,7 @@ def get_substructure_match(substructure: str = Query(..., description="SMILES st
         sub_matches.append(drug)
         if len(sub_matches) >= limit:
             break
+
+    set_cache(cache_key, sub_matches)
 
     return sub_matches

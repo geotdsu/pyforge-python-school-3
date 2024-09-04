@@ -18,6 +18,8 @@ jobs:
       DB_PASSWORD: ${{secrets.DB_PASSWORD}}
       DB_NAME: ${{secrets.DB_NAME}}
       DB_USER: ${{secrets.DB_USER}}
+      REDIS_HOST: ${{secrets.REDIS_HOST}}
+      REDIS_PORT: ${{secrets.REDIS_PORT}}
 
     services:
       postgres:

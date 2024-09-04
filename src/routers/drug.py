@@ -1,11 +1,11 @@
 from fastapi import Query, status, HTTPException, Depends, APIRouter
 from .. import models, schemas
+from fastapi_cache.decorator import cache
 from ..database import get_db
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from rdkit import Chem
 from ..logger import logger
-from src.redis_cache import set_cache, get_cached_result
 
 router = APIRouter(tags=['Drugs'])
 
@@ -53,26 +53,18 @@ def substructure_search_iterator(db: Session, query_mol: Chem.Mol, limit: int):
 
 
 @router.get("/drugs", response_model=List[schemas.DrugResponse])
+@cache(expire=10)
 def get_drugs(
     db: Session = Depends(get_db),
-    limit: int = Query(10, le=100),
+    limit: int = Query(10, le=1000),
     skip: int = Query(0, ge=0),
     search: Optional[str] = ""
 ):
     logger.info(
         "Fetching drugs with limit: %s, skip: %s, search query: %s", limit, skip, search)
 
-    cache_key = f"drugs:limit={limit}:skip={skip}:search={search}"
-    cached_result = get_cached_result(cache_key)
-
-    if cached_result:
-        logger.info("Returning cached result for drugs")
-        return {"source": "cache", "data": cached_result}
-    
     drugs_iter = drugs_iterator(db, limit, skip)
     drugs = list(drugs_iter)
-
-    set_cache(cache_key, drugs)
 
     return drugs
 
@@ -86,9 +78,6 @@ def create_drugs(drug: schemas.DrugAdd, db: Session = Depends(get_db)):
     db.add(new_drug)
     db.commit()
     db.refresh(new_drug)
-
-    # Example: Clear all cached results related to drugs
-    redis_client.flushdb()
 
     return new_drug
 
@@ -120,9 +109,6 @@ def delete_drug(id: int, db: Session = Depends(get_db)):
     drug.delete(synchronize_session=False)
     db.commit()
 
-    # Clear cache if necessary
-    redis_client.flushdb()
-
 
 @router.put("/drugs/{id}", response_model=schemas.DrugResponse)
 def update_drug(
@@ -143,26 +129,17 @@ def update_drug(
     drug_query.update(updated_drug.model_dump(), synchronize_session=False)
     db.commit()
 
-    # Clear cache if necessary
-    redis_client.flushdb()
-
     return drug_query.first()
 
 
 @router.get('/substructure_search', response_model=List[schemas.DrugResponse])
+@cache(expire=30)
 def get_substructure_match(substructure: str = Query(..., description="SMILES structure to search for"),
                            db: Session = Depends(get_db),
                            limit: int = Query(100, le=100)):
     logger.info(
         f'Substructure search for substructure="{substructure}" with limit={limit}')
 
-    cache_key = f"substructure_search:{substructure}:limit={limit}"
-    cached_result = get_cached_result(cache_key)
-
-    if cached_result:
-        logger.info("Returning cached result for substructure search")
-        return {"source": "cache", "data": cached_result}
-    
     substructure = substructure.strip()
 
     query_mol = Chem.MolFromSmiles(substructure)
@@ -179,7 +156,5 @@ def get_substructure_match(substructure: str = Query(..., description="SMILES st
         sub_matches.append(drug)
         if len(sub_matches) >= limit:
             break
-
-    set_cache(cache_key, sub_matches)
 
     return sub_matches

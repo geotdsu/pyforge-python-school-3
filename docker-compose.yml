@@ -47,6 +47,9 @@ services:
     depends_on:
       - postgres
       - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
 
   web2:
     build:
@@ -57,6 +60,9 @@ services:
     depends_on:
       - postgres
       - redis
+    environment:
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
 
   nginx:
     image: nginx:latest

@@ -2,6 +2,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy import Column, DateTime, func
 from src.database import Base, str_uniq, int_pk
 
+
 class Drug(Base):
     __tablename__ = "drugs"
 
@@ -9,7 +10,8 @@ class Drug(Base):
     name: Mapped[str_uniq]
     smiles: Mapped[str_uniq]
     created_at: Mapped[DateTime] = Column(DateTime, server_default=func.now())
-    updated_at: Mapped[DateTime] = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[DateTime] = Column(
+        DateTime, server_default=func.now(), onupdate=func.now())
 
     def __str__(self):
         return (

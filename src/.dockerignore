@@ -1,2 +1,10 @@
-**/__pycache__
-*.pyc
+.env
+.env-copy
+.git
+.gitignore
+.dockerignore
+Dockerfile
+.vscode
+.idea
+*.log
+*.tmp

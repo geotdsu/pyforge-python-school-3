@@ -12,4 +12,5 @@ asyncpg
 psycopg2-binary
 python-dotenv
 redis
+celery[redis]
 fastapi-cache2

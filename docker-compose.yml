@@ -29,11 +29,6 @@ services:
                -c checkpoint_completion_target=0.7
                -c wal_buffers=16MB
                -c default_statistics_target=100
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
     restart: unless-stopped
     tty: true
     stdin_open: true
@@ -50,6 +45,8 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+    volumes:
+      - .:/app
 
   web2:
     build:
@@ -63,6 +60,8 @@ services:
     environment:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
+    volumes:
+      - .:/app
 
   nginx:
     image: nginx:latest
@@ -80,6 +79,21 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+
+  celery_worker:
+    build: .
+    command: celery -A src.celery_worker worker --loglevel=info
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
 
 volumes:
   pgdata:

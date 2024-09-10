@@ -6,66 +6,51 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from rdkit import Chem
 from ..logger import logger
+from src.celery_worker import celery
+from src.celery_worker import celery
+from celery.result import AsyncResult
+from src.tasks import substructure_search_task
 
 router = APIRouter(tags=['Drugs'])
 
 
-def drugs_iterator(db: Session, limit: int, skip: int):
-    offset = skip
-    total_fetched = 0
+@router.get("/substructure_search", response_model=dict)
+@cache(expire=30)
+def initiate_substructure_search(substructure: str = Query(..., description="SMILES structure to search for"),
+                                 limit: int = Query(100, le=100)):
+    logger.info(f"Initiating substructure search for: {substructure}, limit: {limit}")
+    
+    # Start Celery task
+    task = substructure_search_task.delay(substructure, limit)
+    
+    return {"task_id": task.id, "status": task.status}
 
-    while total_fetched < limit:
-        drugs = db.query(models.Drug).offset(offset).limit(
-            min(limit - total_fetched, 100)).all()
-
-        if not drugs:
-            break
-
-        for drug in drugs:
-            yield drug
-            total_fetched += 1
-
-            if total_fetched >= limit:
-                return
-
-        offset += len(drugs)
-
-
-def substructure_search_iterator(db: Session, query_mol: Chem.Mol, limit: int):
-    offset = 0
-    results_count = 0
-
-    while results_count < limit:
-        drugs = db.query(models.Drug).offset(offset).limit(100).all()
-
-        if not drugs:
-            break
-
-        for drug in drugs:
-            mol = Chem.MolFromSmiles(drug.smiles)
-            if mol and mol.HasSubstructMatch(query_mol):
-                yield drug
-                results_count += 1
-                if results_count >= limit:
-                    return
-
-        offset += len(drugs)
+# Fetch Results of Substructure Search by Task ID
+@router.get("/substructure_search/results/{task_id}", response_model=dict)
+def get_substructure_search_results(task_id: str):
+    logger.info(f"Fetching results for task_id: {task_id}")
+    
+    task_result = AsyncResult(task_id)
+    
+    if task_result.state == 'PENDING':
+        return {"task_id": task_id, "status": "Task is still processing"}
+    elif task_result.state == 'SUCCESS':
+        drug_ids = task_result.result
+        return {
+            "task_id": task_id,
+            "status": "Task completed",
+            "result": drug_ids  # Return the list of matching drug IDs
+        }
+    else:
+        return {"task_id": task_id, "status": task_result.state}
 
 
 @router.get("/drugs", response_model=List[schemas.DrugResponse])
 @cache(expire=10)
-def get_drugs(
-    db: Session = Depends(get_db),
-    limit: int = Query(10, le=1000),
-    skip: int = Query(0, ge=0),
-    search: Optional[str] = ""
-):
-    logger.info(
-        "Fetching drugs with limit: %s, skip: %s, search query: %s", limit, skip, search)
-
-    drugs_iter = drugs_iterator(db, limit, skip)
-    drugs = list(drugs_iter)
-
+def get_drugs(db: Session = Depends(get_db),
+              limit: int = Query(10, le=1000),
+              skip: int = Query(0, ge=0)):
+    drugs = db.query(models.Drug).offset(skip).limit(limit).all()
     return drugs
 
 

@@ -18,20 +18,23 @@ router = APIRouter(tags=['Drugs'])
 @cache(expire=30)
 def initiate_substructure_search(substructure: str = Query(..., description="SMILES structure to search for"),
                                  limit: int = Query(100, le=100)):
-    logger.info(f"Initiating substructure search for: {substructure}, limit: {limit}")
-    
+    logger.info(
+        f"Initiating substructure search for: {substructure}, limit: {limit}")
+
     # Start Celery task
     task = substructure_search_task.delay(substructure, limit)
-    
+
     return {"task_id": task.id, "status": task.status}
 
 # Fetch Results of Substructure Search by Task ID
+
+
 @router.get("/substructure_search/results/{task_id}", response_model=dict)
 def get_substructure_search_results(task_id: str):
     logger.info(f"Fetching results for task_id: {task_id}")
-    
+
     task_result = AsyncResult(task_id)
-    
+
     if task_result.state == 'PENDING':
         return {"task_id": task_id, "status": "Task is still processing"}
     elif task_result.state == 'SUCCESS':

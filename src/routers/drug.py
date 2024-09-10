@@ -4,7 +4,6 @@ from fastapi_cache.decorator import cache
 from ..database import get_db
 from sqlalchemy.orm import Session
 from typing import List
-from rdkit import Chem
 from ..logger import logger
 from celery.result import AsyncResult
 from src.tasks import substructure_search_task

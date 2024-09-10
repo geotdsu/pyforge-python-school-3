@@ -3,11 +3,9 @@ from .. import models, schemas
 from fastapi_cache.decorator import cache
 from ..database import get_db
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 from rdkit import Chem
 from ..logger import logger
-from src.celery_worker import celery
-from src.celery_worker import celery
 from celery.result import AsyncResult
 from src.tasks import substructure_search_task
 
@@ -118,31 +116,3 @@ def update_drug(
     db.commit()
 
     return drug_query.first()
-
-
-@router.get('/substructure_search', response_model=List[schemas.DrugResponse])
-@cache(expire=30)
-def get_substructure_match(substructure: str = Query(..., description="SMILES structure to search for"),
-                           db: Session = Depends(get_db),
-                           limit: int = Query(100, le=100)):
-    logger.info(
-        f'Substructure search for substructure="{substructure}" with limit={limit}')
-
-    substructure = substructure.strip()
-
-    query_mol = Chem.MolFromSmiles(substructure)
-    if not query_mol:
-        logger.error(
-            f'Invalid molecule for substructure search: {substructure}')
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f'{status.HTTP_400_BAD_REQUEST} BAD REQUEST - not a valid molecule'
-        )
-
-    sub_matches = []
-    for drug in substructure_search_iterator(db, query_mol, limit):
-        sub_matches.append(drug)
-        if len(sub_matches) >= limit:
-            break
-
-    return sub_matches
